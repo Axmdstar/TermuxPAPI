@@ -20,6 +20,7 @@ class AndroidApi:
             # self.d = u2.connect(self.device_ip or "")
             self.d = u2.connect(self.device_ip or "")
 
+    # NOTE: Unitility Methods
     def __run_adb_command(self, command) -> tuple[int, str, str]:
         """Execute an ADB command and return the result"""
         try:
@@ -28,7 +29,7 @@ class AndroidApi:
         except Exception as e:
             return -1, "", str(e)
 
-    def dial_ussd(self, ussd_code):
+    def __dial_ussd(self, ussd_code):
         """Dial a USSD code using adb."""
         subprocess.call(
             [
@@ -44,7 +45,41 @@ class AndroidApi:
         )
         time.sleep(self.wait_time_process)  # Wait for the USSD dialog to appear
 
-    def dial_ussd_evc(self, ussd_code) -> None:
+    def Query_Formatter(self, query_result: str) -> list[dict[str, str]]:
+        """Format the query result into a list of dictionaries."""
+        messages = []
+        entries = query_result.strip().split("Row: ")
+        entries = re.split(r"Row: \d+", query_result.strip())
+        print("query_result: >>", query_result)
+
+        for entry in entries[1:]:  # Skip the first empty entry
+            message = {}
+            fields = entry.strip().split(", ", 2)
+            # print("Fields: >>", fields)
+            for field in fields:
+                key_value = field.split("=")
+                if len(key_value) == 2:
+                    key, value = key_value
+                    message[key] = value
+            messages.append(message)
+        return messages
+
+    def Query_Phone_Messages(self):
+        """Query the phone's SMS messages using adb."""
+
+        returncode, stdout, stderr = self.__run_adb_command("""
+            adb shell content query --uri content://sms/inbox\
+            --sort date\
+            --projection address:date:body\
+            --where address='192'\
+            """)
+        if returncode != 0:
+            print("Error querying messages:", stderr)
+            raise Exception(stderr)
+        # print("Query Result :>>", stdout)
+        return stdout
+
+    def __dial_ussd_evc(self, ussd_code) -> None:
         """Dial a EVC USSD code using adb."""
         try:
             subprocess.call(
@@ -138,10 +173,11 @@ class AndroidApi:
             raise Exception("Device not connected. Call connect() first.")
         return self.d.dump_hierarchy()
 
+    # NOTE:  Workflow Methods
     def automate_ussd_interaction(self, ussd_code, button_texts):
         """Automate the USSD interaction by dialing and clicking buttons."""
         self.connect()
-        self.dial_ussd(ussd_code)
+        self.__dial_ussd(ussd_code)
 
         self.__Write_text("1")
         self.click_button("Send")
@@ -152,7 +188,7 @@ class AndroidApi:
     def Somnet_Workflow(self, ussd_code):
         """Automate the Somnet USSD interaction."""
         self.connect()
-        self.dial_ussd(ussd_code)
+        self.__dial_ussd(ussd_code)
 
         screen_text = self.__ScreenTextExtractor()
         print(screen_text)
@@ -160,29 +196,23 @@ class AndroidApi:
 
     def Read_Sms_Workflow(self):
         """Automate reading SMS messages."""
-        """
-        + "\n"
-        + "usage: adb shell content query --uri <URI> [--user <USER_ID>]"
-                + " [--projection <PROJECTION>] [--where <WHERE>] [--sort <SORT_ORDER>]\n"
-        + "  <PROJECTION> is a list of colon separated column names and is formatted:\n"
-        + "  <COLUMN_NAME>[:<COLUMN_NAME>...]\n"
-        + "  <SORT_ORDER> is the order in which rows in the result should be sorted.\n"
-        + "  Example:\n"
-        + "  # Select \"name\" and \"value\" columns from secure settings where \"name\" is "
-                + "equal to \"new_setting\" and sort the result by name in ascending order.\n"
-        + "  adb shell content query --uri content://settings/secure --projection name:value"
-                + " --where \"name=\'new_setting\'\" --sort \"name ASC\"\n"
-        """
-        self.connect()
+        messages = self.Query_Phone_Messages()
+        formatted_messages = self.Query_Formatter(messages)
 
-    # adb shell "content query --uri content://sms/inbox --projection address,date,body"
-    # adb shell "content query --uri content://sms --projection address,date,body,read,type"
+        # INFO: Print the formatted messages for debugging
+        # for i in range(min(10, len(formatted_messages))):
+        #     print(f"Message {i}:")
+        #     print(f"  Address: {formatted_messages[i].get('address', 'N/A')}")
+        #     print(f"  Date: {formatted_messages[i].get('date', 'N/A')}")
+        #     print(f"  Body: {formatted_messages[i].get('body', 'N/A')}")
+        #
+        return formatted_messages
 
     def autamate_send_evc(self, evc_number, amount="0.9", pin="5511"):
         """Automate sending EVC number."""
         try:
             self.connect()
-            self.dial_ussd_evc(f"*712*{evc_number}*{amount}%23")
+            self.__dial_ussd_evc(f"*712*{evc_number}*{amount}%23")
             self.__Write_text(pin)
 
             if self.click_button("Send"):
@@ -218,6 +248,7 @@ api = AndroidApi()
 # api.Somnet_Workflow("*100*1%23")
 
 # TODO: Read Sms Workflow
+api.Read_Sms_Workflow()
 
 # NOTE: Send EVC
 # api.autamate_send_evc("612553160", "10")
