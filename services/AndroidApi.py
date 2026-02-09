@@ -6,8 +6,9 @@ import uiautomator2 as u2
 
 
 class AndroidApi:
-    def __init__(self, device_ip=None):
+    def __init__(self, device_ip=None, serial=None):
         self.device_ip = device_ip
+        self.serial = serial
         self.d = None
         self.evc_buttons = ["pin", "send"]
         self.wait_time_process = 5
@@ -16,6 +17,7 @@ class AndroidApi:
     def connect(self):
         """Connect to the Android device using uiautomator2."""
         if self.d is None:
+            # self.d = u2.connect(self.device_ip or "")
             self.d = u2.connect(self.device_ip or "")
 
     def __run_adb_command(self, command) -> tuple[int, str, str]:
@@ -74,7 +76,7 @@ class AndroidApi:
             return True
         return False
 
-    def wirte_text(self, text):
+    def __Write_text(self, text):
         """Write text into the focused input field."""
         if self.d is None:
             raise Exception("Device not connected. Call connect() first.")
@@ -88,39 +90,26 @@ class AndroidApi:
             raise Exception(stderr)
         time.sleep(self.wait_time_action)
 
-    def autamate_send_evc(self, evc_number, amount="0.9", pin="5511"):
-        """Automate sending EVC number."""
-        try:
-            self.connect()
-            self.dial_ussd_evc(f"*712*{evc_number}*{amount}%23")
-            self.wirte_text(pin)
-
-            if self.click_button("Send"):
-                # TODO: Send response to api
-                data = self.ScreenaTextExtractor()
-                print(data)
-                self.click_button("OK")
-                return data
-            else:
-                raise Exception("Send button not found")
-
-        except Exception as e:
-            print(e)
-            return None
-
-    def ScreenaTextExtractor(self) -> dict[str, str]:
+    def __ScreenTextExtractor(self) -> dict[str, str]:
         """Extract Text from a Node, with specific resourceId"""
+        print("Extracting Text from the Screen...")
         self.connect()
         if self.d is None:
             raise Exception("Device not connected. Call Connect() first.")
+
         text = self.d(
             resourceId="com.android.phone:id/message",
         ).get_text()
-        data = self.ParseTextToDict(text)
+
+        # BUG: ScreenTextExtractor is now concrete and only works for USSD dialogs
+        # print(f"Extracted Text: {text}")
+        # data = self.ParseTextToDict(text)
+        data = text
         return data
 
-    def ParseTextToDict(self, Text: str) -> dict[str, str]:
+    def __ParseTextToDict(self, Text: str) -> dict[str, str]:
         """Create Dict formt of the extracted text."""
+        # BUG: This Method is only extracting EVC USSD resposnses
         dummy: str = (
             Text
             or "[-EVCPLUS-] $0.01 ayaad uwareejisay 0612553160, Tar: 08/09/25 13:56:47, Haraagaagu waa $1.07.&#10;La soo deg App-ka WAAFI http://onelink.to/waafi@"
@@ -142,7 +131,7 @@ class AndroidApi:
         }
         return data
 
-    def GetXmlDump(self):
+    def __GetXmlDump(self):
         """Get the XML dump of the current UI hierarchy."""
         self.connect()
         if self.d is None:
@@ -154,34 +143,84 @@ class AndroidApi:
         self.connect()
         self.dial_ussd(ussd_code)
 
-        self.wirte_text("1")
+        self.__Write_text("1")
         self.click_button("Send")
-        self.wirte_text("1")
+        time.sleep(self.wait_time_process)  # Wait for the USSD dialog to appear
+        self.__Write_text("1")
         self.click_button("Send")
 
-        # for text in button_texts:
-        #     if not self.click_button(text):
-        #         print(f"Button with text '{text}' not found.")
-        #         break
-        #     time.sleep(2)  # Wait between clicks
+    def Somnet_Workflow(self, ussd_code):
+        """Automate the Somnet USSD interaction."""
+        self.connect()
+        self.dial_ussd(ussd_code)
+
+        screen_text = self.__ScreenTextExtractor()
+        print(screen_text)
+        self.click_button("OK")
+
+    def Read_Sms_Workflow(self):
+        """Automate reading SMS messages."""
+        """
+        + "\n"
+        + "usage: adb shell content query --uri <URI> [--user <USER_ID>]"
+                + " [--projection <PROJECTION>] [--where <WHERE>] [--sort <SORT_ORDER>]\n"
+        + "  <PROJECTION> is a list of colon separated column names and is formatted:\n"
+        + "  <COLUMN_NAME>[:<COLUMN_NAME>...]\n"
+        + "  <SORT_ORDER> is the order in which rows in the result should be sorted.\n"
+        + "  Example:\n"
+        + "  # Select \"name\" and \"value\" columns from secure settings where \"name\" is "
+                + "equal to \"new_setting\" and sort the result by name in ascending order.\n"
+        + "  adb shell content query --uri content://settings/secure --projection name:value"
+                + " --where \"name=\'new_setting\'\" --sort \"name ASC\"\n"
+        """
+        self.connect()
+
+    # adb shell "content query --uri content://sms/inbox --projection address,date,body"
+    # adb shell "content query --uri content://sms --projection address,date,body,read,type"
+
+    def autamate_send_evc(self, evc_number, amount="0.9", pin="5511"):
+        """Automate sending EVC number."""
+        try:
+            self.connect()
+            self.dial_ussd_evc(f"*712*{evc_number}*{amount}%23")
+            self.__Write_text(pin)
+
+            if self.click_button("Send"):
+                # TODO: Send response to api
+                print("send button clicked")
+                data = self.__ScreenTextExtractor()
+                print(data)
+                self.click_button("OK")
+                return data
+            else:
+                raise Exception("Send button not found")
+
+        except Exception as e:
+            print(e)
+            return None
 
 
 # NOTE: create class instance usind Wifi IP of the device
-# api = AndroidApi("192.168.6.100:38809")
+# api2 = AndroidApi("192.168.6.106:34767")
+
+
+# TODO: test with multiple devices
+# 11 Pro = 9d64ab2553a5
+# Samsumg F12 RZ8RA1F2S5A
 api = AndroidApi()
+# api = AndroidApi("RZ8RA1F2S5A")
+# api2 = AndroidApi("9d64ab2553a5")
 # api.automate_ussd_interaction("*100%23", ["1", "1", "OK"])
+# api2.automate_ussd_interaction("*100%23", ["1", "1", "OK"])
 # time.sleep(4)
 
+# TODO: Somnet Workflow
+# api.Somnet_Workflow("*100*1%23")
+
+# TODO: Read Sms Workflow
+
 # NOTE: Send EVC
-api.autamate_send_evc("613072016", "0.5")
-
-# NOTE: Test getting Text from the xml node
-# api.ScreenaTextExtractor()
-
-# NOTE: get UI Xml Dump to parse Text on the current screen
-# file = api.GetXmlDump()
-# with open("dump.xml", "w", encoding="utf-8") as f:
-#     f.write(file)
+# api.autamate_send_evc("612553160", "10")
 
 # NOTE: Test Evc Send
 # api.autamate_send_evc("613072016", "0.9")
@@ -190,35 +229,3 @@ api.autamate_send_evc("613072016", "0.5")
 # NOTE: Test Parsing Text to Dict
 # text = api.ParseTextToDict("Haraagaagu xissabtaadu kuguma filna, mobile No:")
 # print(text)
-
-# def ussd_automation():
-#     # Connect to device (requires USB debugging)
-#     # TODO: Change the IP address to your device's address, use env or variable
-#     d = u2.connect("192.168.6.100:38809")
-#
-#     # Dial USSD code
-#     subprocess.call(
-#         [
-#             "adb",
-#             "shell",
-#             "am",
-#             "start",
-#             "-a",
-#             "android.intent.action.CALL",
-#             "-d",
-#             "tel:*100%23",
-#         ]
-#     )
-#
-#     time.sleep(5)
-#
-#     # Try to find and click elements (may work better than input commands)
-#     # This requires knowing the UI elements' resource IDs or text
-#     ok_button = d(text="OK")
-#     if ok_button.exists:
-#         ok_button.click()
-#
-#     # Additional automation steps...
-#
-#
-# ussd_automation()

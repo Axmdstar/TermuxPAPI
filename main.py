@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.v1.endpoints import evc
 from core.config import settings
 
 # from  import settings
@@ -19,6 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# NOTE: All API routes should start with /api/v1
+app.include_router(evc.router, prefix=settings.API_V1, tags=["auth"])
+
 
 @app.get("/")
 async def read_root():
@@ -30,6 +34,6 @@ async def get_info():
     return {
         "app_name": settings.app_name,
         "version": settings.VERSION,
-        "api_version": settings.API_V,
+        "api_version": settings.API_V1,
         "database_url": settings.DATABASE_URL,
     }
