@@ -13,6 +13,7 @@ class AndroidApi:
         self.evc_buttons = ["pin", "send"]
         self.wait_time_process = 5
         self.wait_time_action = 1
+        self.message_list = []
 
     def connect(self):
         """Connect to the Android device using uiautomator2."""
@@ -50,12 +51,10 @@ class AndroidApi:
         messages = []
         entries = query_result.strip().split("Row: ")
         entries = re.split(r"Row: \d+", query_result.strip())
-        print("query_result: >>", query_result)
 
         for entry in entries[1:]:  # Skip the first empty entry
             message = {}
             fields = entry.strip().split(", ", 2)
-            # print("Fields: >>", fields)
             for field in fields:
                 key_value = field.split("=")
                 if len(key_value) == 2:
@@ -205,8 +204,8 @@ class AndroidApi:
         #     print(f"  Address: {formatted_messages[i].get('address', 'N/A')}")
         #     print(f"  Date: {formatted_messages[i].get('date', 'N/A')}")
         #     print(f"  Body: {formatted_messages[i].get('body', 'N/A')}")
-        #
-        return formatted_messages
+
+        self.message_list = formatted_messages
 
     def autamate_send_evc(self, evc_number, amount="0.9", pin="5511"):
         """Automate sending EVC number."""
@@ -249,7 +248,7 @@ api = AndroidApi()
 
 # TODO: Read Sms Workflow
 api.Read_Sms_Workflow()
-
+print(api.message_list)
 # NOTE: Send EVC
 # api.autamate_send_evc("612553160", "10")
 
