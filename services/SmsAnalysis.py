@@ -5,32 +5,34 @@ msg = [
     {
         "address": "192",
         "date": "1757325809622",
-        "body": "[-EVCPLUS-] $0.01 ayaad uwareejisay 0612553160, Tar: 08/09/25 13:05:20, Haraagaagu waa $1.08.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPLUS-] $0.01 ayaad uwareejisay XXX XXX XXX(0612553160), Tar: 08/09/25 13:05:20, Haraagaagu waa $1.08.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
     },
     {
         "address": "192",
         "date": "1757329008655",
-        "body": "[-EVCPLUS-] $0.01 ayaad uwareejisay 0612553160, Tar: 08/09/25 13:56:47, Haraagaagu waa $1.07.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPLUS-] $0.01 ayaad uwareejisay XXX XXX XXX(0612553160), Tar: 08/09/25 13:56:47, Haraagaagu waa $1.07.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
     },
     {
         "address": "192",
         "date": "1757414938716",
-        "body": "[-EVCPLUS-] $0.5 ayaad uwareejisay 0613072016, Tar: 09/09/25 13:52:13, Haraagaagu waa $0.57.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPLUS-] $0.5 ayaad uwareejisay XXX XXX XXX(0613072016), Tar: 09/09/25 13:52:13, Haraagaagu waa $0.57.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
     },
     {
         "address": "192",
         "date": "1760254381073",
-        "body": "[-EVCPLUS-] $0.25 ayaad uwareejisay 0613072016, Tar: 12/10/25 10:32:47, Haraagaagu waa $6.87.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPLUS-] $0.25 ayaad uwareejisay XXX XXX XXX(0614918632), Tar: 12/10/25 10:32:47, Haraagaagu waa $6.87.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
     },
     {
         "address": "192",
         "date": "1760254448030",
-        "body": "[-EVCPLUS-] $0.25 ayaad uwareejisay 0612553160, Tar: 12/10/25 10:37:29, Haraagaagu waa $6.62.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPLUS-] $0.25 ayaad uwareejisay XXX XXX XXX(0613072016), Tar: 12/10/25 10:37:29, Haraagaagu waa $6.62.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+    },
+    {
+        "address": "192",
+        "date": "1460254448030",
+        "body": "[-EVCPlus-] waxaad $20 ka heshay 0612553160, Tar: 22/01/24 11:03:17 haraagagu waa $23.64.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
     },
 ]
-
-# [-EVCPlus-] waxaad $20 ka heshay 0619116650, Tar: 22/01/24 11:03:17 haraagagu waa $23.64.
-# La soo deg App-ka WAAFI http://onelink.to/waafi
 
 
 # NOTE:
@@ -53,9 +55,12 @@ msg = [
 # We can use regular expressions to extract the relevant information from the message body. For example:
 #
 class Message:
-    def __init__(self, amount, recipient, date, rest_balance, transaction_type) -> None:
+    def __init__(
+        self, amount, recipient, recipient_num, date, rest_balance, transaction_type
+    ) -> None:
         self.amount: float = amount
         self.recipient: str = recipient
+        self.recipient_num: str = recipient_num
         self.date: str = date
         self.rest_balance: float = rest_balance
         self.transaction_type: str = transaction_type
@@ -72,10 +77,24 @@ class MessageParser:
         amount = amount_match.group(0) if amount_match else None
         print(f"Extracted amount: {amount}")
 
+        # Determine transaction type
+        transaction_type = (
+            "uwareejisay" if "uwareejisay" in message["body"] else "heshey"
+        )
+
         # Extract recipient
-        recipient_match = re.search(r"uwareejisay\s+(\d+)", message["body"])
+        recipient_match = ""
+        recipient_match_num = ""
+        if transaction_type == "uwareejisay":
+            recipient_match = re.search(r"uwareejisay\s(.+)\b\(", message["body"])
+            recipient_match_num = re.search(r"\b\((\d+)\)", message["body"])
+        else:
+            recipient_match = re.search(r"heshay\s+(\d+)", message["body"])
+
         recipient = recipient_match.group(1) if recipient_match else None
+        recipient_num = recipient_match_num.group(1) if recipient_match_num else None
         print(f"Extracted recipient: {recipient}")
+        print(f"Extracted recipient Number: {recipient_num}")
 
         # Extract date
         date_match = re.search(
@@ -85,21 +104,19 @@ class MessageParser:
         print(f"Extracted date: {date}")
 
         # Extract balance after transfer
-        balance_match = re.search(r"Haraagaagu\s+waa\s+\$[\d.]+", message["body"])
+        balance_match = re.search(
+            r"(Haraagaagu|haraagagu)\s+waa\s+\$[\d.]+", message["body"]
+        )
         rest_balance = balance_match.group(0).split()[-1] if balance_match else None
         print(f"Extracted rest balance: {rest_balance}")
 
-        # Determine transaction type
-        transaction_type = (
-            "uwareejisay" if "uwareejisay" in message["body"] else "heshey"
-        )
         print(f"Determined transaction type: {transaction_type}")
-
-        print("_____________________________________________________________")
+        print("_______________________________________________________")
 
         return Message(
             float(amount[1:] if amount else 0),
             recipient,
+            recipient_num,
             date,
             float(rest_balance[1:-1] if rest_balance else 0),
             transaction_type,
@@ -117,16 +134,33 @@ class MessageParser:
 class SmsAnalysis:
     def __init__(self, messages):
         self.messages = MessageParser(messages).parse_all_messages()
-        # self.parser = MessageParser(messages)
 
     def Number_Of_Messages(self):
         """Return the total number of messages."""
         print(f"Total number of messages: {len(self.messages)}")
         return len(self.messages)
 
+    def Total_Amount_Recieved(self):
+        """Calculate the total amount Revieved."""
+        heshay_messages = []
+        for message in self.messages:
+            if message.transaction_type == "heshey":
+                heshay_messages.append(message)
+
+        total_amount = sum(message.amount for message in heshay_messages)
+
+        print(f"Total amount Recieved: ${total_amount:.2f}")
+        return total_amount
+
     def Total_Amount_Transferred(self):
         """Calculate the total amount transferred."""
-        total_amount = sum(message.amount for message in self.messages)
+        uwareejisay_messages = []
+        for message in self.messages:
+            if message.transaction_type == "uwareejisay":
+                uwareejisay_messages.append(message)
+
+        total_amount = sum(message.amount for message in uwareejisay_messages)
+
         print(f"Total amount transferred: ${total_amount:.2f}")
         return total_amount
 
@@ -135,6 +169,8 @@ class SmsAnalysis:
 
 # NOTE:
 # 1. Total number of messages
-# SmsAnalysis(msg).Number_Of_Messages()
+SmsAnalysis(msg).Number_Of_Messages()
 # 2. Total amount transferred
-SmsAnalysis(msg).Total_Amount_Transferred()
+# SmsAnalysis(msg).Total_Amount_Transferred()
+# 3. Total amount Recieved
+# SmsAnalysis(msg).Total_Amount_Recieved()
