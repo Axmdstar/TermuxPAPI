@@ -255,6 +255,7 @@ sms = SmsAnalysis(api.message_list)
 sms.Number_Of_Messages()
 sms.Total_Amount_Transferred()
 sms.Total_Amount_Recieved()
+sms.FilterByRecipient("613072017")
 # NOTE: Send EVC
 # api.autamate_send_evc("612553160", "10")
 

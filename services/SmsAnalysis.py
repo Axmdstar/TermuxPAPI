@@ -94,13 +94,12 @@ class MessageParser:
         # INFO: Check for Salaam Bank message
         salaam = "bangiga No:" in message["body"]
         if salaam:
-            print()
             return Message(0, "salaam", "", "", 0, "salaam")
 
         # Extract amount
         amount_match = re.search(r"\$[\d.]+", message["body"])
         amount = amount_match.group(0) if amount_match else None
-        print(f"Extracted amount: {amount}")
+        # print(f"Extracted amount: {amount}")
 
         # Determine transaction type
         transaction_type = (
@@ -118,15 +117,15 @@ class MessageParser:
 
         recipient = recipient_match.group(1) if recipient_match else None
         recipient_num = recipient_match_num.group(1) if recipient_match_num else None
-        print(f"Extracted recipient: {recipient}")
-        print(f"Extracted recipient Number: {recipient_num}")
+        # print(f"Extracted recipient: {recipient}")
+        # print(f"Extracted recipient Number: {recipient_num}")
 
         # Extract date
         date_match = re.search(
             r"Tar:\s+(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})", message["body"]
         )
         date = date_match.group(1) if date_match else None
-        print(f"Extracted date: {date}")
+        # print(f"Extracted date: {date}")
 
         # Extract balance after transfer
         balance_match = re.search(
@@ -134,12 +133,12 @@ class MessageParser:
         )
         rest_balance = balance_match.group(0).split()[-1] if balance_match else None
         rest_balance = rest_balance.replace(",", "") if rest_balance else None
-        print(f"Extracted rest balance: {rest_balance}")
-        print(f"rest balance Raw: {balance_match.group(0) if balance_match else 'N/A'}")
+        # print(f"Extracted rest balance: {rest_balance}")
+        # print(f"rest balance Raw: {balance_match.group(0) if balance_match else 'N/A'}")
         # print(f"Extracted rest balance: {rest_balance[1:-1]}")
 
-        print(f"Determined transaction type: {transaction_type}")
-        print("_______________________________________________________")
+        # print(f"Determined transaction type: {transaction_type}")
+        # print("_______________________________________________________")
 
         return Message(
             float(amount[1:] if amount else 0),
@@ -185,10 +184,14 @@ class SmsAnalysis:
         print(f"Total amount Recieved: ${total_amount:.2f}")
         return total_amount
 
-    def Total_Amount_Transferred(self):
+    def Total_Amount_Transferred(self, messages=None):
         """Calculate the total amount transferred."""
         uwareejisay_messages = []
-        for message in self.messages:
+
+        if messages is None:
+            messages = self.messages
+
+        for message in messages:
             if message.transaction_type == "uwareejisay":
                 uwareejisay_messages.append(message)
 
@@ -197,7 +200,17 @@ class SmsAnalysis:
         print(f"Total amount transferred: ${total_amount:.2f}")
         return total_amount
 
-    # def Amount_Extractor(self, message):
+    def FilterByRecipient(self, recipient):
+        """Filter messages by recipient."""
+        filtered_messages = []
+        for message in self.messages:
+            if message.recipient == recipient or message.recipient_num == recipient:
+                filtered_messages.append(message)
+        print(
+            f"Messages filtered by recipient '{recipient}': {len(filtered_messages)} "
+        )
+        self.Total_Amount_Transferred(filtered_messages)
+        return filtered_messages
 
 
 # NOTE:
