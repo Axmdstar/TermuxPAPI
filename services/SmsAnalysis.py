@@ -25,12 +25,24 @@ msg = [
     {
         "address": "192",
         "date": "1760254448030",
-        "body": "[-EVCPLUS-] $0.25 ayaad uwareejisay XXX XXX XXX(0613072016), Tar: 12/10/25 10:37:29, Haraagaagu waa $6.62.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPLUS-] $1 ayaad uwareejisay XXX XXX XXX(0613072016), Tar: 12/10/25 10:37:29, Haraagaagu waa $0.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
     },
     {
         "address": "192",
         "date": "1460254448030",
-        "body": "[-EVCPlus-] waxaad $20 ka heshay 0612553160, Tar: 22/01/24 11:03:17 haraagagu waa $23.64.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+        "body": "[-EVCPlus-] waxaad $20.73 ka heshay 0612553160, Tar: 22/01/24 11:03:17 haraagagu waa $1,014.37.\nLa soo deg App-ka WAAFI http://onelink.to/waafi",
+    },
+    {
+        # Beco
+        "address": "192",
+        "date": "1460254448030",
+        "body": "EVCPlus -> TransferId: 19660409360\nGuri No: 220523.\nWaxaad $ 72.16 ka bixisay AXMED FAARAX MAX/ED XAAJI,\nHaraagaagu waa: $51.73.",
+    },
+    {
+        # Salaam Bank
+        "address": "192",
+        "date": "1460254448030",
+        "body": "[-EVCPlus-] waxaad kala baxday $10 Xisaabtaada bangiga No: 328XXX58, haraagaagu waa  $10.18.",
     },
 ]
 
@@ -72,6 +84,19 @@ class MessageParser:
 
     def __parse_message(self, message) -> Message:
         """Parse a single message and extract relevant information."""
+
+        # INFO: Check for Beco message
+        beco = ("Guri No:" in message["body"]) and ("ka bixisay" in message["body"])
+        if beco:
+            print("Beco message detected, skipping parsing.")
+            return Message(0, "Beco", "", "", 0, "beco")
+
+        # INFO: Check for Salaam Bank message
+        salaam = "bangiga No:" in message["body"]
+        if salaam:
+            print()
+            return Message(0, "salaam", "", "", 0, "salaam")
+
         # Extract amount
         amount_match = re.search(r"\$[\d.]+", message["body"])
         amount = amount_match.group(0) if amount_match else None
@@ -105,10 +130,13 @@ class MessageParser:
 
         # Extract balance after transfer
         balance_match = re.search(
-            r"(Haraagaagu|haraagagu)\s+waa\s+\$[\d.]+", message["body"]
+            r"(Haraagaagu|haraagagu)\s+waa\s+\$[\d,.]+", message["body"]
         )
         rest_balance = balance_match.group(0).split()[-1] if balance_match else None
+        rest_balance = rest_balance.replace(",", "") if rest_balance else None
         print(f"Extracted rest balance: {rest_balance}")
+        print(f"rest balance Raw: {balance_match.group(0) if balance_match else 'N/A'}")
+        # print(f"Extracted rest balance: {rest_balance[1:-1]}")
 
         print(f"Determined transaction type: {transaction_type}")
         print("_______________________________________________________")
@@ -127,6 +155,11 @@ class MessageParser:
         parsed_messages = []
         for message in self.messages:
             parsed_data = self.__parse_message(message)
+            if (
+                parsed_data.transaction_type == "beco"
+                or parsed_data.transaction_type == "salaam"
+            ):
+                continue
             parsed_messages.append(parsed_data)
         return parsed_messages
 

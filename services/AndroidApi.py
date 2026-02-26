@@ -4,6 +4,8 @@ import time
 
 import uiautomator2 as u2
 
+from SmsAnalysis import SmsAnalysis
+
 
 class AndroidApi:
     def __init__(self, device_ip=None, serial=None):
@@ -230,15 +232,15 @@ class AndroidApi:
 
 
 # NOTE: create class instance usind Wifi IP of the device
-# api2 = AndroidApi("192.168.6.106:34767")
+api = AndroidApi("192.168.6.103")
 
 
 # TODO: test with multiple devices
 # 11 Pro = 9d64ab2553a5
 # Samsumg F12 RZ8RA1F2S5A
-api = AndroidApi()
+# api = AndroidApi()
 # api = AndroidApi("RZ8RA1F2S5A")
-# api2 = AndroidApi("9d64ab2553a5")
+# api2 = AndroidApi()
 # api.automate_ussd_interaction("*100%23", ["1", "1", "OK"])
 # api2.automate_ussd_interaction("*100%23", ["1", "1", "OK"])
 # time.sleep(4)
@@ -248,7 +250,11 @@ api = AndroidApi()
 
 # TODO: Read Sms Workflow
 api.Read_Sms_Workflow()
-print(api.message_list)
+# print(api.message_list)
+sms = SmsAnalysis(api.message_list)
+sms.Number_Of_Messages()
+sms.Total_Amount_Transferred()
+sms.Total_Amount_Recieved()
 # NOTE: Send EVC
 # api.autamate_send_evc("612553160", "10")
 
